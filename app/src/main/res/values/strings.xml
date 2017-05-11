@@ -1,0 +1,19 @@
+<resources>
+    <string name="app_name">Reminders</string>
+    <string name="button_add">confirm</string>
+    <string name="button_clear">clear</string>
+    <string name="zero">zzz0</string>
+    <string name="one">zzz1</string>
+    <string name="two">zzz2</string>
+    <string name="three">zzz3</string>
+    <string name="four">zzz4</string>
+    <string name="button_build">new</string>
+    <string name="reminder_title">Title</string>
+    <string name="reminder_description">Description</string>
+    <string name="button_delete">delete</string>
+    <string name="reminder_time">Enter Time</string>
+    <string name="reminder_date">Enter Date</string>
+    <string name="sort_reminders">sort</string>
+    <string name="up_arrow">▲</string>
+    <string name="down_arrow">▼</string>
+</resources>
