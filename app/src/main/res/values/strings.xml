@@ -16,4 +16,5 @@
     <string name="sort_reminders">sort</string>
     <string name="up_arrow">▲</string>
     <string name="down_arrow">▼</string>
+    <string name="refresh">↻</string>
 </resources>

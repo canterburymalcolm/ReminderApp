@@ -47,7 +47,7 @@ public class BuildReminderActivity extends AppCompatActivity {
             title.setText(reminder.getTitle());
             description.setText(reminder.getDescription());
             dateSet = reminder.getDateDue();
-            time.setText(dateSet.get(Calendar.HOUR) + ":" + dateSet.get(Calendar.MINUTE));
+            time.setText(dateSet.get(Calendar.HOUR_OF_DAY) + ":" + dateSet.get(Calendar.MINUTE));
             date.setText(String.format("%d/%d/%d", dateSet.get(Calendar.DAY_OF_MONTH),
                     dateSet.get(Calendar.MONTH), dateSet.get(Calendar.YEAR)));
         }
@@ -60,7 +60,7 @@ public class BuildReminderActivity extends AppCompatActivity {
                 Calendar currentTime = Calendar.getInstance();
                 int year = currentTime.get(Calendar.YEAR);
                 int month = currentTime.get(Calendar.MONTH);
-                int day = currentTime.get(Calendar.DAY_OF_MONTH);
+                int day = currentTime.get(Calendar.DAY_OF_MONTH) + 1;
                 DatePickerDialog datePickerDialog;
                 datePickerDialog = new DatePickerDialog(BuildReminderActivity.this, new DatePickerDialog.OnDateSetListener() {
                     @Override
@@ -79,15 +79,16 @@ public class BuildReminderActivity extends AppCompatActivity {
         time.setOnClickListener(new View.OnClickListener(){
             public void onClick(View view) {
                 Calendar currentTime = Calendar.getInstance();
-                int hour = currentTime.get(Calendar.HOUR);
+                int hour = currentTime.get(Calendar.HOUR_OF_DAY);
                 int minute = currentTime.get(Calendar.MINUTE);
                 TimePickerDialog timePickerDialog;
                 timePickerDialog = new TimePickerDialog(BuildReminderActivity.this, new TimePickerDialog.OnTimeSetListener() {
                     @Override
                     public void onTimeSet(TimePicker timePicker, int sHour, int sMinute) {
                         time.setText(String.format("%02d:%02d",sHour, sMinute));
-                        dateSet.set(Calendar.HOUR, sHour);
+                        dateSet.set(Calendar.HOUR_OF_DAY, sHour);
                         dateSet.set(Calendar.MINUTE, sMinute);
+                        //dateSet.set(Calendar.SECOND, 0);
                     }
                 }, hour, minute, true);
                 timePickerDialog.show();

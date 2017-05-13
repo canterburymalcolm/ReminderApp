@@ -8,27 +8,48 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.graphics.Color;
 import android.os.SystemClock;
 import android.support.annotation.DrawableRes;
 import android.support.v4.app.TaskStackBuilder;
+import android.support.v4.view.GestureDetectorCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.app.NotificationCompat;
+import android.view.GestureDetector;
+import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Button;
 
+import com.android.volley.AuthFailureError;
+import com.android.volley.Request;
+import com.android.volley.RequestQueue;
+import com.android.volley.Response;
+import com.android.volley.VolleyError;
+import com.android.volley.toolbox.JsonObjectRequest;
+import com.android.volley.toolbox.StringRequest;
+import com.android.volley.toolbox.Volley;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Scanner;
 import java.util.regex.Pattern;
 
+import static android.graphics.Color.BLACK;
 import static com.example.myfirstapp.BuildReminderActivity.REMINDER_OBJECT;
 
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity{
 
+    private GestureDetectorCompat mDectector;
+    final String url = "http://192.241.194.58:8000/reminder_api";
     public static final String REMINDER_UPDATE = "reminderUpdate";
     public static final String REMINDER_NOTIFICATION = "reminderNotification";
     public static final String REMINDER_INDEX = "reminderIndex";
@@ -45,6 +66,7 @@ public class MainActivity extends AppCompatActivity {
         Reminder reminder;
         Intent intent = getIntent();
         SharedPreferences settings = getSharedPreferences(PREF_NAME, 0);
+        mDectector = new GestureDetectorCompat(this, new MyGestureListener());
 
         //previous reminders in json format
         String objects = settings.getString("objects", "");
@@ -64,14 +86,13 @@ public class MainActivity extends AppCompatActivity {
             reminder = gson.fromJson(intent.getStringExtra(REMINDER_OBJECT), Reminder.class);
             //add new reminder
             reminders.add(reminder);
+            sendPostRequest(reminder);
             //put most urgent at top
             sort();
             setAlarm(reminder);
         }
         //make visible and add text
         updateButtons();
-        System.out.println("starting ");
-
     }
 
     @Override
@@ -115,30 +136,99 @@ public class MainActivity extends AppCompatActivity {
             }
         }
         Gson gson = new GsonBuilder().create();
-        long timeDif = reminder.getDateDue().getTimeInMillis() - System.currentTimeMillis();
+        long time = reminder.getDateDue().getTimeInMillis();
+        long timeDif = time - System.currentTimeMillis();
         System.out.println("time dif " + timeDif);
         AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
         Intent myIntent = new Intent(MainActivity.this, AlarmReceiver.class);
         myIntent.putExtra(REMINDER_UPDATE, gson.toJson(reminder));
         myIntent.putExtra(REMINDER_NOTIFICATION, index);
         PendingIntent pendingIntent = PendingIntent.getBroadcast(this, 0, myIntent, 0);
-        alarmManager.set(AlarmManager.RTC_WAKEUP, SystemClock.elapsedRealtime() + 5000  , pendingIntent);
+        alarmManager.set(AlarmManager.RTC_WAKEUP, time, pendingIntent);
 
+    }
+
+    public void sendPostRequest(Reminder reminder){
+        RequestQueue requestQueue = Volley.newRequestQueue(this);
+        Gson gson = new GsonBuilder().create();
+        String json = gson.toJson(reminder);
+        final String requestBody = json;
+        System.out.println("adding " + json);
+        StringRequest stringPostRequest = new StringRequest(Request.Method.POST, url, new Response.Listener<String>() {
+            @Override
+            public void onResponse(String response) {
+               // System.out.println("post response " + response);
+            }
+        }, new Response.ErrorListener() {
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                System.out.println("error " + error);
+            }
+        }) {
+            @Override
+            public String getBodyContentType() {
+                return "application/json; charset=utf-8";
+            }
+
+            @Override
+            public byte[] getBody() throws AuthFailureError {
+                try {
+                    return requestBody == null ? null : requestBody.getBytes("utf-8");
+                } catch (UnsupportedEncodingException uee) {
+                    System.out.println("post auth failure error");
+                    return null;
+                }
+            }
+        };
+        requestQueue.add(stringPostRequest);
+    }
+
+    public void sendGetRequest(View view){
+        RequestQueue requestQueue = Volley.newRequestQueue(this);
+        final Gson gson = new GsonBuilder().create();
+        final Button button = (Button)findViewById(R.id.refresh);
+        //request a string from url
+        StringRequest stringGetRequest = new StringRequest(url,
+                new Response.Listener<String>() {
+                    @Override
+                    public void onResponse(String response) {
+                        button.setBackgroundColor(Color.GREEN);
+                        String[] jsons = response.split("[}]");
+                        reminders.clear();
+                        //{"description":"test","reminder_time":"2017-04-12T22:34:00Z","title":"fake"}
+                        for (int i = 0; i < jsons.length - 1; i++){
+                            String json = jsons[i].substring(1) + "}";
+                            System.out.println(json);
+                            reminders.add(gson.fromJson(json, Reminder.class));
+                        }
+                        updateButtons();
+                    }
+                }, new Response.ErrorListener() {
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                button.setBackgroundColor(Color.BLACK);
+            }
+        });
+        requestQueue.add(stringGetRequest);
     }
 
     public void down(View view){
-        Reminder first = reminders.remove(0);
-        reminders.add(first);
-        updateButtons();
+        if (!reminders.isEmpty()) {
+            Reminder first = reminders.remove(0);
+            reminders.add(first);
+            updateButtons();
+        }
     }
 
     public void up(View view){
-        Reminder last = reminders.get(reminders.size() - 1);
-        for (int i = reminders.size() - 1; i > 0; i--){
-            reminders.set(i, reminders.get(i - 1));
+        if (!reminders.isEmpty()) {
+            Reminder last = reminders.get(reminders.size() - 1);
+            for (int i = reminders.size() - 1; i > 0; i--) {
+                reminders.set(i, reminders.get(i - 1));
+            }
+            reminders.set(0, last);
+            updateButtons();
         }
-        reminders.set(0, last);
-        updateButtons();
     }
 
     public void sortButton(View view){
@@ -222,4 +312,21 @@ public class MainActivity extends AppCompatActivity {
         }
         startActivity(intent);
     }
+
+    class MyGestureListener extends GestureDetector.SimpleOnGestureListener {
+
+        @Override
+        public boolean onDown(MotionEvent event){
+            System.out.println("down");
+            return true;
+        }
+
+        @Override
+        public boolean onFling(MotionEvent event1, MotionEvent event2,
+                               float velocityX, float velocityY){
+            System.out.println("flinging");
+            return  true;
+        }
+    }
+
 }

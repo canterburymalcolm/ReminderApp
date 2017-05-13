@@ -1,5 +1,6 @@
 package com.example.myfirstapp;
 
+import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
@@ -11,6 +12,7 @@ import android.support.v7.app.NotificationCompat;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
+import static android.content.Context.NOTIFICATION_SERVICE;
 import static com.example.myfirstapp.MainActivity.REMINDER_INDEX;
 import static com.example.myfirstapp.MainActivity.REMINDER_NOTIFICATION;
 import static com.example.myfirstapp.MainActivity.REMINDER_UPDATE;
@@ -31,9 +33,11 @@ public class AlarmReceiver extends BroadcastReceiver {
         NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(context);
         //characteristics of notification
         mBuilder.setSmallIcon(R.drawable.reminder_logo_192)
+                .setDefaults(Notification.DEFAULT_ALL)
                 .setContentTitle(reminder.getTitle())
                 .setContentText(reminder.getDescription())
                 .setWhen(System.currentTimeMillis())
+                .setDefaults(Notification.DEFAULT_LIGHTS | Notification.DEFAULT_SOUND | Notification.DEFAULT_VIBRATE)
                 .setAutoCancel(true);
         //intent to take user to buildReminderActivity
         Intent resultIntent = new Intent(context, BuildReminderActivity.class);
