@@ -8,6 +8,7 @@ import java.util.Calendar;
 
 public class Reminder {
 
+    private int pk;
     private String reminder_time;
     private String title;
     private String description;
@@ -26,6 +27,14 @@ public class Reminder {
             return false;
         }
         return reminder.getDateDue().compareTo(getDateDue()) < 0;
+    }
+
+    public int getPk(){
+        return pk;
+    }
+
+    public void setPk(int pk){
+        this.pk = pk;
     }
 
     public String getFormattedDate(){
@@ -65,7 +74,7 @@ public class Reminder {
         reminder_time += String.format("%02dT",(dateDue.get(Calendar.DAY_OF_MONTH)));
         reminder_time += String.format("%02d:",(dateDue.get(Calendar.HOUR_OF_DAY)));
         reminder_time += String.format("%02d:",(dateDue.get(Calendar.MINUTE)));
-        reminder_time += "00Z";
+        reminder_time += "00";
     }
 
     public void setTitle(String title){

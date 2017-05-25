@@ -42,6 +42,7 @@ import java.util.HashMap;
 import java.util.Scanner;
 import java.util.regex.Pattern;
 
+import static android.R.style.Widget;
 import static android.graphics.Color.BLACK;
 import static com.example.myfirstapp.BuildReminderActivity.REMINDER_OBJECT;
 
@@ -79,7 +80,23 @@ public class MainActivity extends AppCompatActivity{
             index++;
         }
         if (intent.hasExtra(REMINDER_NOTIFICATION)){
-            reminders.remove(intent.getIntExtra(REMINDER_NOTIFICATION, -1));
+            int deleteIndex = intent.getIntExtra(REMINDER_NOTIFICATION, -1);
+            RequestQueue requestQueue = Volley.newRequestQueue(this);
+            String deleteUrl = "http://192.241.194.58:8000/delete/" + reminders.get(deleteIndex).getPk();
+            StringRequest stringGetRequest = new StringRequest(deleteUrl,
+                    new Response.Listener<String>() {
+                        @Override
+                        public void onResponse(String response) {
+                            System.out.println("delete response");
+                        }
+                    }, new Response.ErrorListener() {
+                @Override
+                public void onErrorResponse(VolleyError error) {
+                    System.out.println("delete error " + error);
+                }
+            });
+            requestQueue.add(stringGetRequest);
+            reminders.remove(deleteIndex);
         }
         if (intent.hasExtra(REMINDER_OBJECT)){
             //get new reminder
@@ -111,7 +128,7 @@ public class MainActivity extends AppCompatActivity{
         if (objects.contains("*")) {
             objects = objects.substring(0, objects.length() - 1);
         }
-        System.out.println("commiting " + objects);
+        //System.out.println("commiting " + objects);
         editor.putString("objects", objects);
         editor.commit();
     }
@@ -138,7 +155,7 @@ public class MainActivity extends AppCompatActivity{
         Gson gson = new GsonBuilder().create();
         long time = reminder.getDateDue().getTimeInMillis();
         long timeDif = time - System.currentTimeMillis();
-        System.out.println("time dif " + timeDif);
+        System.out.println("time dif " + timeDif / 1000);
         AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
         Intent myIntent = new Intent(MainActivity.this, AlarmReceiver.class);
         myIntent.putExtra(REMINDER_UPDATE, gson.toJson(reminder));
@@ -148,16 +165,23 @@ public class MainActivity extends AppCompatActivity{
 
     }
 
-    public void sendPostRequest(Reminder reminder){
+    public void sendPostRequest(final Reminder reminder){
         RequestQueue requestQueue = Volley.newRequestQueue(this);
-        Gson gson = new GsonBuilder().create();
+        final Gson gson = new GsonBuilder().create();
         String json = gson.toJson(reminder);
-        final String requestBody = json;
+        final String jsonResponse;
+        int index = json.indexOf(",\"r");
+        if (reminder.getDescription().isEmpty()){
+            json = "{" + json.substring(index + 1);
+        }
         System.out.println("adding " + json);
+        final String requestBody = json;
         StringRequest stringPostRequest = new StringRequest(Request.Method.POST, url, new Response.Listener<String>() {
             @Override
             public void onResponse(String response) {
-               // System.out.println("post response " + response);
+                System.out.println("post response " + response);
+                Reminder tempReminder  = gson.fromJson(response, Reminder.class);
+                reminder.setPk(tempReminder.getPk());
             }
         }, new Response.ErrorListener() {
             @Override
@@ -183,7 +207,7 @@ public class MainActivity extends AppCompatActivity{
         requestQueue.add(stringPostRequest);
     }
 
-    public void sendGetRequest(View view){
+    public void sendGetRequest(final View view){
         RequestQueue requestQueue = Volley.newRequestQueue(this);
         final Gson gson = new GsonBuilder().create();
         final Button button = (Button)findViewById(R.id.refresh);
@@ -192,15 +216,25 @@ public class MainActivity extends AppCompatActivity{
                 new Response.Listener<String>() {
                     @Override
                     public void onResponse(String response) {
-                        button.setBackgroundColor(Color.GREEN);
+                        button.setBackgroundDrawable(((Button)findViewById(R.id.clear)).getBackground());
+                        System.out.println("get response " +  response);
                         String[] jsons = response.split("[}]");
                         reminders.clear();
+                        for (int i = 0; i < BUTTONS; i++){
+                            Button button = getButton(i);
+                            button.setVisibility(View.GONE);
+                        }
+                        SharedPreferences settings = getSharedPreferences(PREF_NAME, 0);
+                        SharedPreferences.Editor editor = settings.edit();
+                        editor.clear();
+                        editor.commit();
                         //{"description":"test","reminder_time":"2017-04-12T22:34:00Z","title":"fake"}
                         for (int i = 0; i < jsons.length - 1; i++){
                             String json = jsons[i].substring(1) + "}";
-                            System.out.println(json);
+                            //System.out.println(json);
                             reminders.add(gson.fromJson(json, Reminder.class));
                         }
+                        sort();
                         updateButtons();
                     }
                 }, new Response.ErrorListener() {
@@ -276,6 +310,22 @@ public class MainActivity extends AppCompatActivity{
         SharedPreferences.Editor editor = settings.edit();
         editor.clear();
         editor.commit();
+
+        RequestQueue requestQueue = Volley.newRequestQueue(this);
+        String clearUrl = "http://192.241.194.58:8000/clear";
+        StringRequest stringGetRequest = new StringRequest(clearUrl,
+                new Response.Listener<String>() {
+                    @Override
+                    public void onResponse(String response) {
+                        System.out.println("clear response");
+                    }
+                }, new Response.ErrorListener() {
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                System.out.println("clear error");
+            }
+        });
+        requestQueue.add(stringGetRequest);
     }
 
     public void buildReminder(View view){
